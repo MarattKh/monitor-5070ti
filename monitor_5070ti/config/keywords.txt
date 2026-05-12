@@ -1,0 +1,6 @@
+5070 ti
+rtx 5070 ti
+price
+availability
+review
+benchmark

@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+monitor_5070ti/outputs/*.json
+monitor_5070ti/outputs/*.csv
+monitor_5070ti/outputs/*.md

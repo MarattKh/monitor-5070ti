@@ -1,0 +1,12 @@
+[
+  {
+    "name": "NVIDIA News",
+    "url": "https://www.nvidia.com/en-us/geforce/news/",
+    "requires_playwright": false
+  },
+  {
+    "name": "Example Dynamic Source",
+    "url": "https://example.com/dynamic",
+    "requires_playwright": true
+  }
+]
