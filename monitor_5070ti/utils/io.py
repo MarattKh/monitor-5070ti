@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import csv
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 from monitor_5070ti.models import Item
 
 
 def write_json(items: list[Item], path: Path) -> None:
-    path.write_text(json.dumps([item.__dict__ for item in items], ensure_ascii=False, indent=2), encoding="utf-8")
+    path.write_text(json.dumps([asdict(item) for item in items], ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def write_csv(items: list[Item], path: Path) -> None:
@@ -18,7 +19,7 @@ def write_csv(items: list[Item], path: Path) -> None:
         )
         writer.writeheader()
         for item in items:
-            row = item.__dict__.copy()
+            row = asdict(item)
             row["matched_keywords"] = ", ".join(item.matched_keywords)
             writer.writerow(row)
 
