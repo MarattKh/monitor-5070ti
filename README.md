@@ -1,0 +1,54 @@
+# monitor_5070ti
+
+Полноценный мониторинг предложений **RTX 5070 Ti** по магазинам и маркетплейсам с фильтрацией, сигналами и отчетами.
+
+## Запуск (Windows)
+1. Установите Python 3.11+.
+2. Откройте PowerShell/CMD в папке проекта.
+3. Одноразовая установка зависимостей:
+   ```bat
+   pip install -r requirements.txt
+   ```
+4. Запуск мониторинга:
+   ```bat
+   python monitor_5070_ti_v_2.py
+   ```
+5. Или запуск в один клик: `run_monitor.bat`.
+
+## Что делает скрипт
+- Собирает товарные предложения по источникам в `parsers/`.
+- Фильтрует только RTX 5070 Ti.
+- Исключает RTX 5070 без Ti, аксессуары, ПК/ноутбуки и товары без цены.
+- Ограничивает цену сверху: 130000 RUB.
+- Сортирует предложения по цене (дешевые выше).
+- Формирует сигналы:
+  - новая <= 90000: good price
+  - новая <= 75000: urgent buy
+  - б/у <= 65000: good price
+  - б/у <= 50000: urgent buy
+- Не падает целиком, если один источник недоступен (ошибки в `monitor.log`).
+
+## Telegram уведомления
+Отправляются только для `good_price` и `urgent_buy`.
+
+Задайте переменные окружения:
+- `TG_BOT_TOKEN`
+- `TG_CHAT_ID`
+
+Пример PowerShell:
+```powershell
+$env:TG_BOT_TOKEN="123:abc"
+$env:TG_CHAT_ID="123456"
+python monitor_5070_ti_v_2.py
+```
+
+## Отчеты
+После каждого запуска:
+- `results.json`
+- `results.csv`
+- `results.md`
+- `urgent_deals.md`
+- `latest_ai_prompt.md`
+
+## Источники
+DNS, Ситилинк, Регард, Ozon, Wildberries, М.Видео, Эльдорадо, Яндекс Маркет, Avito, Мегамаркет, AliExpress, ComputerUniverse, CDEK.Shopping.

@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+results.json
+results.csv
+results.md
+urgent_deals.md
+latest_ai_prompt.md
+monitor.log
