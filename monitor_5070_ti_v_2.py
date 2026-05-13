@@ -22,7 +22,7 @@ from parsers import (
     megamarket,
     ozon,
     regard,
-    ситилинк,
+    citilink,
     wildberries,
     yandex_market,
 )
@@ -184,7 +184,7 @@ def main() -> None:
     configure_logging()
     sources = {
         "DNS": dns,
-        "Ситилинк": ситилинк,
+        "Ситилинк": citilink,
         "Регард": regard,
         "Ozon": ozon,
         "Wildberries": wildberries,
