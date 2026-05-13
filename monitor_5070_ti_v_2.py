@@ -46,9 +46,8 @@ def normalize_title(text: str) -> str:
 
 def is_rtx_5070_ti(title: str, raw_text: str) -> bool:
     haystack = normalize_title(f"{title} {raw_text}")
-    has_5070 = "5070" in haystack
-    has_ti = "ti" in haystack or "ti," in haystack
-    return has_5070 and has_ti
+    compact = haystack.replace(" ", "")
+    return "5070ti" in compact or ("5070" in haystack and "ti" in haystack)
 
 
 def is_accessory_or_invalid(title: str, raw_text: str) -> bool:
@@ -64,6 +63,7 @@ def is_accessory_or_invalid(title: str, raw_text: str) -> bool:
         "компьютер",
         "системный блок",
         "pc",
+        "пк",
         "корпус",
         "держатель",
         "подставка",
@@ -72,7 +72,7 @@ def is_accessory_or_invalid(title: str, raw_text: str) -> bool:
     ]
     if "5070 ti" not in haystack and "5070ti" not in haystack:
         return True
-    return any(x in haystack for x in bad_keywords if x != "rtx 5070") and "5070 ti" not in haystack
+    return any(x in haystack for x in bad_keywords if x != "rtx 5070")
 
 
 def filter_offers(offers: Iterable[ProductOffer]) -> list[ProductOffer]:
@@ -84,11 +84,15 @@ def filter_offers(offers: Iterable[ProductOffer]) -> list[ProductOffer]:
             continue
         if item.price > MAX_PRICE_RUB:
             continue
+        u = item.url.lower()
+        if "?q=" in u or "?text=" in u or "/search" in u:
+            continue
         if not is_rtx_5070_ti(item.title, item.raw_text):
             continue
         if is_accessory_or_invalid(item.title, item.raw_text):
             continue
-        if "5070 ti" not in normalize_title(item.title + " " + item.raw_text):
+        norm = normalize_title(item.title + " " + item.raw_text)
+        if "5070 ti" not in norm and "5070ti" not in norm.replace(" ", ""):
             continue
         out.append(item)
     out.sort(key=lambda x: x.price)
@@ -186,16 +190,6 @@ def main() -> None:
         "DNS": dns,
         "Ситилинк": citilink,
         "Регард": regard,
-        "Ozon": ozon,
-        "Wildberries": wildberries,
-        "М.Видео": mvideo,
-        "Эльдорадо": eldorado,
-        "Яндекс Маркет": yandex_market,
-        "Avito": avito,
-        "Мегамаркет": megamarket,
-        "AliExpress": aliexpress,
-        "ComputerUniverse": computeruniverse,
-        "CDEK.Shopping": cdek_shopping,
     }
     collected: list[ProductOffer] = []
     for name, module in sources.items():
