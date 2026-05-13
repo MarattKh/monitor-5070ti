@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 
 from monitor_5070_ti_v_2 import filter_offers
 from models import ProductOffer
@@ -32,12 +32,12 @@ def test_rejects_laptop():
 
 
 def test_rejects_desktop_pc():
-    offers = filter_offers([mk_offer("Игровой ПК RTX 5070 Ti")])
+    offers = filter_offers([mk_offer("Gaming PC RTX 5070 Ti")])
     assert offers == []
 
 
 def test_rejects_waterblock():
-    offers = filter_offers([mk_offer("Водоблок для RTX 5070 Ti")])
+    offers = filter_offers([mk_offer("Waterblock for RTX 5070 Ti")])
     assert offers == []
 
 
@@ -79,7 +79,7 @@ def test_dns_fixture_card_parsing_and_filtering():
     assert "Palit" in filtered[0].title
     assert "/search" not in filtered[0].url and "?q=" not in filtered[0].url and "?text=" not in filtered[0].url
     assert filtered[0].price == 89999
-    assert all("водоблок" not in x.title.lower() for x in filtered)
+    assert all("РІРѕРґРѕР±Р»РѕРє" not in x.title.lower() for x in filtered)
     assert all(" 5070" not in x.title.lower() or "ti" in x.title.lower() for x in filtered)
 
 
@@ -90,7 +90,7 @@ def test_regard_fixture_card_parsing_and_filtering():
     filtered = filter_offers(offers)
     assert len(filtered) == 1
     assert "Windforce" in filtered[0].title
-    assert filtered[0].url.endswith("/item/a1")
+    assert "/product/737606/" in filtered[0].url
     assert filtered[0].price == 92500
 
 
