@@ -52,16 +52,20 @@ def is_rtx_5070_ti(title: str, raw_text: str) -> bool:
 
 def is_accessory_or_invalid(title: str, raw_text: str) -> bool:
     haystack = normalize_title(f"{title} {raw_text}")
+    compact = haystack.replace(" ", "")
+
     bad_keywords = [
-        "rtx 5070" ,"5070 super",
+        "5070 super",
         "кабель",
         "переходник",
         "кулер",
         "водоблок",
+        "waterblock",
         "ноутбук",
         "laptop",
         "компьютер",
         "системный блок",
+        "gaming pc",
         "pc",
         "пк",
         "корпус",
@@ -70,10 +74,11 @@ def is_accessory_or_invalid(title: str, raw_text: str) -> bool:
         "чехол",
         "fan",
     ]
-    if "5070 ti" not in haystack and "5070ti" not in haystack:
-        return True
-    return any(x in haystack for x in bad_keywords if x != "rtx 5070")
 
+    if "5070 ti" not in haystack and "5070ti" not in compact:
+        return True
+
+    return any(keyword in haystack for keyword in bad_keywords)
 
 def filter_offers(offers: Iterable[ProductOffer]) -> list[ProductOffer]:
     out: list[ProductOffer] = []
