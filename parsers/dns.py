@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from urllib.error import URLError
 
 from models import ProductOffer
+from parsers.browser import fetch_html
 from parsers.common import _download, _clean_text, parse_rub
 
 CARD_RE = re.compile(r'(<div[^>]+class="[^"]*catalog-product[^"]*"[^>]*>.*?</div>\s*</div>)', re.S)
@@ -31,10 +32,10 @@ def parse_cards(html: str) -> list[dict]:
     return cards
 
 
-def parse_offers() -> list[ProductOffer]:
+def parse_offers(browser_mode: bool = False) -> list[ProductOffer]:
     search_url = "https://www.dns-shop.ru/search/?q=rtx+5070+ti"
     try:
-        html = _download(search_url)
+        html = fetch_html(search_url, save_to="debug_html/dns.html") if browser_mode else _download(search_url)
     except URLError:
         return []
     now = datetime.now(timezone.utc).isoformat()
