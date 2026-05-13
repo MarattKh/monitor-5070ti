@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 import logging
@@ -183,6 +184,8 @@ def notify_telegram(offers: list[ProductOffer]) -> None:
 def run_source(name: str, fn) -> list[ProductOffer]:
     logger = logging.getLogger(name)
     try:
+        if callable(fn):
+            return fn()
         return fn.parse_offers()
     except Exception as exc:
         logger.exception("source failed: %s", exc)
@@ -190,6 +193,10 @@ def run_source(name: str, fn) -> list[ProductOffer]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--browser", action="store_true", help="Use Playwright browser mode for DNS and Ситилинк")
+    args = parser.parse_args()
+
     configure_logging()
     sources = {
         "DNS": dns,
@@ -198,7 +205,10 @@ def main() -> None:
     }
     collected: list[ProductOffer] = []
     for name, module in sources.items():
-        collected.extend(run_source(name, module))
+        if module in (dns, citilink):
+            collected.extend(run_source(name, lambda m=module: m.parse_offers(browser_mode=args.browser)))
+        else:
+            collected.extend(run_source(name, module))
     filtered = filter_offers(collected)
     save_reports(filtered)
     notify_telegram(filtered)
