@@ -177,6 +177,7 @@ def test_results_md_contains_signal_column_and_best_offers(tmp_path, monkeypatch
     assert "| Source | Title | Price | Condition | Availability | Signal | URL |" in content
     assert "URGENT_BUY" in content
     assert "GOOD_PRICE" in content
+    assert "https://example.com/product/1" in content
 
 
 def test_results_json_csv_do_not_include_signal(tmp_path, monkeypatch):
