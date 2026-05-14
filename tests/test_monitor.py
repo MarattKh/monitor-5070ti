@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from monitor_5070_ti_v_2 import filter_offers
+from monitor_5070_ti_v_2 import filter_offers, get_signal_label
 from models import ProductOffer
 from parsers.citilink import parse_cards as parse_citilink_cards
 from parsers.dns import parse_cards as parse_dns_cards
@@ -143,3 +143,55 @@ def test_citilink_fixture_card_parsing_and_filtering():
     assert "TI" in filtered[0].title.upper()
     assert "/search" not in filtered[0].url and "?q=" not in filtered[0].url and "?text=" not in filtered[0].url
     assert filtered[0].price == 100730
+
+def test_get_signal_label_for_new_good_and_urgent():
+    urgent = mk_offer("RTX 5070 Ti", price=75000)
+    good = mk_offer("RTX 5070 Ti", price=90000)
+    normal = mk_offer("RTX 5070 Ti", price=91000)
+
+    assert get_signal_label(urgent) == "URGENT_BUY"
+    assert get_signal_label(good) == "GOOD_PRICE"
+    assert get_signal_label(normal) == "NORMAL"
+
+
+def test_results_md_contains_signal_column_and_best_offers(tmp_path, monkeypatch):
+    import monitor_5070_ti_v_2 as mon
+
+    monkeypatch.chdir(tmp_path)
+    mon.save_reports(
+        [
+            mk_offer("RTX 5070 Ti Urgent", price=75000),
+            mk_offer("RTX 5070 Ti Good", price=90000),
+            mk_offer("RTX 5070 Ti Normal", price=100000),
+        ],
+        [{"source": "DNS", "raw_count": 3, "filtered_count": 3, "error": ""}],
+    )
+
+    content = Path("results.md").read_text(encoding="utf-8")
+    assert "- urgent_buy count: 1" in content
+    assert "- good_price count: 1" in content
+    assert "- normal count: 1" in content
+    assert "- best offer:" in content
+    assert "## Best offers" in content
+    assert "## Source summary" in content
+    assert "| Source | Title | Price | Condition | Availability | Signal | URL |" in content
+    assert "URGENT_BUY" in content
+    assert "GOOD_PRICE" in content
+
+
+def test_results_json_csv_do_not_include_signal(tmp_path, monkeypatch):
+    import csv
+    import json
+    import monitor_5070_ti_v_2 as mon
+
+    monkeypatch.chdir(tmp_path)
+    mon.save_reports([mk_offer("RTX 5070 Ti", price=90000)], [])
+
+    data = json.loads(Path("results.json").read_text(encoding="utf-8"))
+    assert isinstance(data, list) and data
+    assert "signal" not in data[0]
+
+    with open("results.csv", newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        assert "signal" not in reader.fieldnames
+
