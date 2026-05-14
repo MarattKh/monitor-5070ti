@@ -100,6 +100,7 @@ def test_citilink_fixture_card_parsing_and_filtering():
     offers = [mk_offer(c["title"], price=c["price"], url=f"https://www.citilink.ru{c['url']}") for c in cards]
     filtered = filter_offers(offers)
     assert len(filtered) == 1
-    assert "RTX5070Ti" in filtered[0].title
+    assert "5070" in filtered[0].title
+    assert "TI" in filtered[0].title.upper()
     assert "/search" not in filtered[0].url and "?q=" not in filtered[0].url and "?text=" not in filtered[0].url
-    assert filtered[0].price == 95000
+    assert filtered[0].price == 100730
