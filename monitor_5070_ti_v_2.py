@@ -120,16 +120,25 @@ def classify_signal(item: ProductOffer) -> str | None:
     return None
 
 
+def get_signal_label(item: ProductOffer) -> str:
+    signal = classify_signal(item)
+    if signal == "urgent_buy":
+        return "URGENT_BUY"
+    if signal == "good_price":
+        return "GOOD_PRICE"
+    return "NORMAL"
+
+
 def render_markdown(offers: list[ProductOffer]) -> str:
     lines = [
         "# RTX 5070 Ti offers",
         "",
-        "| Source | Title | Price | Condition | Availability | URL |",
-        "|---|---|---:|---|---|---|",
+        "| Source | Title | Price | Condition | Availability | Signal | URL |",
+        "|---|---|---:|---|---|---|---|",
     ]
     for o in offers:
         lines.append(
-            f"| {o.source} | {o.title.replace('|', '/')} | {o.price:.0f} {o.currency} | {o.condition} | {o.availability} | {o.url} |"
+            f"| {o.source} | {o.title.replace('|', '/')} | {o.price:.0f} {o.currency} | {o.condition} | {o.availability} | {get_signal_label(o)} | {o.url} |"
         )
     return "\n".join(lines) + "\n"
 
@@ -137,8 +146,9 @@ def render_markdown(offers: list[ProductOffer]) -> str:
 def render_results_markdown(offers: list[ProductOffer], source_stats: list[dict[str, str | int]]) -> str:
     checked_at = datetime.now(timezone.utc).isoformat()
     min_price = f"{min(o.price for o in offers):.0f} RUB" if offers else "n/a"
-    urgent_count = sum(1 for o in offers if classify_signal(o) == "urgent_buy")
-    good_price_count = sum(1 for o in offers if classify_signal(o) == "good_price")
+    urgent_count = sum(1 for o in offers if get_signal_label(o) == "URGENT_BUY")
+    good_price_count = sum(1 for o in offers if get_signal_label(o) == "GOOD_PRICE")
+    normal_count = sum(1 for o in offers if get_signal_label(o) == "NORMAL")
 
     lines = [
         "# RTX 5070 Ti offers",
@@ -148,14 +158,39 @@ def render_results_markdown(offers: list[ProductOffer], source_stats: list[dict[
         f"- Checked at: {checked_at}",
         f"- Total offers after filter: {len(offers)}",
         f"- Min price: {min_price}",
-        f"- urgent_buy count: {urgent_count}",
+                f"- urgent_buy count: {urgent_count}",
         f"- good_price count: {good_price_count}",
+        f"- normal count: {normal_count}",
+                f"- best offer: {offers[0].price:.0f} {offers[0].currency} | {offers[0].source} | {offers[0].title} | {offers[0].url}" if offers else "- best offer: n/a",
         "",
-        "## Source summary",
+        "## Best offers",
         "",
-        "| Source | Raw count | Filtered count | Error |",
-        "|---|---:|---:|---|",
     ]
+
+    best_offers = [o for o in offers if get_signal_label(o) in {"URGENT_BUY", "GOOD_PRICE"}]
+    if best_offers:
+        lines.extend(
+            [
+                "| Source | Title | Price | Condition | Availability | Signal | URL |",
+                "|---|---|---:|---|---|---|---|",
+            ]
+        )
+        for o in best_offers:
+            lines.append(
+                f"| {o.source} | {o.title.replace('|', '/')} | {o.price:.0f} {o.currency} | {o.condition} | {o.availability} | {get_signal_label(o)} | {o.url} |"
+            )
+    else:
+        lines.append("No urgent/good-price offers found.")
+
+    lines.extend(
+        [
+            "",
+            "## Source summary",
+            "",
+            "| Source | Raw count | Filtered count | Error |",
+            "|---|---:|---:|---|",
+        ]
+    )
 
     for stat in source_stats:
         lines.append(
@@ -174,7 +209,7 @@ def render_results_markdown(offers: list[ProductOffer], source_stats: list[dict[
 
     for o in offers:
         lines.append(
-            f"| {o.source} | {o.title.replace('|', '/')} | {o.price:.0f} {o.currency} | {o.condition} | {o.availability} | {o.url} |"
+            f"| {o.source} | {o.title.replace('|', '/')} | {o.price:.0f} {o.currency} | {o.condition} | {o.availability} | {get_signal_label(o)} | {o.url} |"
         )
 
     return "\n".join(lines) + "\n"
