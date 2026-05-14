@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 from monitor_5070_ti_v_2 import filter_offers
 from models import ProductOffer
@@ -45,13 +45,52 @@ def test_reports_are_created(tmp_path, monkeypatch):
     import monitor_5070_ti_v_2 as mon
 
     monkeypatch.chdir(tmp_path)
-    mon.save_reports([mk_offer("RTX 5070 Ti Ventus", price=89000)])
+    mon.save_reports([mk_offer("RTX 5070 Ti Ventus", price=89000)], [{"source": "DNS", "raw_count": 1, "filtered_count": 1, "error": ""}])
 
     assert Path("results.json").exists()
     assert Path("results.csv").exists()
     assert Path("results.md").exists()
     assert Path("urgent_deals.md").exists()
     assert Path("latest_ai_prompt.md").exists()
+
+
+def test_source_summary_counts_and_errors():
+    import monitor_5070_ti_v_2 as mon
+
+    ok_offer = mk_offer("RTX 5070 Ti", url="https://shop.example/product/5070ti")
+
+    offers, err = mon.run_source(
+        "DNS",
+        lambda: [
+            ok_offer,
+            mk_offer("RTX 5070", url="https://shop.example/product/5070"),
+        ],
+    )
+    assert err == ""
+    assert len(offers) == 2
+    assert len(mon.filter_offers(offers)) == 1
+
+    offers_bad, err_bad = mon.run_source(
+        "DNS",
+        lambda: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+    assert offers_bad == []
+    assert "boom" in err_bad
+
+
+def test_results_md_contains_summary_and_source_summary(tmp_path, monkeypatch):
+    import monitor_5070_ti_v_2 as mon
+
+    monkeypatch.chdir(tmp_path)
+    mon.save_reports(
+        [mk_offer("RTX 5070 Ti Ventus", price=89000)],
+        [{"source": "DNS", "raw_count": 3, "filtered_count": 1, "error": ""}],
+    )
+
+    content = Path("results.md").read_text(encoding="utf-8")
+    assert "## Summary" in content
+    assert "## Source summary" in content
+    assert "| DNS | 3 | 1 |  |" in content
 
 
 def test_no_search_urls_in_results():
