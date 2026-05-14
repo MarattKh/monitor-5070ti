@@ -134,7 +134,56 @@ def render_markdown(offers: list[ProductOffer]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def save_reports(offers: list[ProductOffer]) -> None:
+def render_results_markdown(offers: list[ProductOffer], source_stats: list[dict[str, str | int]]) -> str:
+    checked_at = datetime.now(timezone.utc).isoformat()
+    min_price = f"{min(o.price for o in offers):.0f} RUB" if offers else "n/a"
+    urgent_count = sum(1 for o in offers if classify_signal(o) == "urgent_buy")
+    good_price_count = sum(1 for o in offers if classify_signal(o) == "good_price")
+
+    lines = [
+        "# RTX 5070 Ti offers",
+        "",
+        "## Summary",
+        "",
+        f"- Checked at: {checked_at}",
+        f"- Total offers after filter: {len(offers)}",
+        f"- Min price: {min_price}",
+        f"- urgent_buy count: {urgent_count}",
+        f"- good_price count: {good_price_count}",
+        "",
+        "## Source summary",
+        "",
+        "| Source | Raw count | Filtered count | Error |",
+        "|---|---:|---:|---|",
+    ]
+
+    for stat in source_stats:
+        lines.append(
+            f"| {stat['source']} | {stat['raw_count']} | {stat['filtered_count']} | {stat['error']} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Offers",
+            "",
+            "| Source | Title | Price | Condition | Availability | URL |",
+            "|---|---|---:|---|---|---|",
+        ]
+    )
+
+    for o in offers:
+        lines.append(
+            f"| {o.source} | {o.title.replace('|', '/')} | {o.price:.0f} {o.currency} | {o.condition} | {o.availability} | {o.url} |"
+        )
+
+    return "\n".join(lines) + "\n"
+
+
+def save_reports(offers: list[ProductOffer], source_stats: list[dict[str, str | int]] | None = None) -> None:
+    if source_stats is None:
+        source_stats = []
+
     Path("results.json").write_text(
         json.dumps([asdict(x) for x in offers], ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -147,7 +196,7 @@ def save_reports(offers: list[ProductOffer]) -> None:
         for x in offers:
             w.writerow(asdict(x))
 
-    Path("results.md").write_text(render_markdown(offers), encoding="utf-8")
+    Path("results.md").write_text(render_results_markdown(offers, source_stats), encoding="utf-8")
 
     urgent = [o for o in offers if classify_signal(o) == "urgent_buy"]
     Path("urgent_deals.md").write_text(render_markdown(urgent), encoding="utf-8")
@@ -181,15 +230,15 @@ def notify_telegram(offers: list[ProductOffer]) -> None:
         logging.getLogger("telegram").exception("telegram error: %s", exc)
 
 
-def run_source(name: str, fn) -> list[ProductOffer]:
+def run_source(name: str, fn) -> tuple[list[ProductOffer], str]:
     logger = logging.getLogger(name)
     try:
         if callable(fn):
-            return fn()
-        return fn.parse_offers()
+            return fn(), ""
+        return fn.parse_offers(), ""
     except Exception as exc:
         logger.exception("source failed: %s", exc)
-        return []
+        return [], str(exc)
 
 
 def main() -> None:
@@ -204,15 +253,36 @@ def main() -> None:
         "Регард": regard,
     }
     collected: list[ProductOffer] = []
+    source_stats: list[dict[str, str | int]] = []
+
     for name, module in sources.items():
         if module in (dns, citilink):
-            collected.extend(run_source(name, lambda m=module: m.parse_offers(browser_mode=args.browser)))
+            source_offers, error = run_source(name, lambda m=module: m.parse_offers(browser_mode=args.browser))
         else:
-            collected.extend(run_source(name, module))
+            source_offers, error = run_source(name, module)
+
+        collected.extend(source_offers)
+
+        filtered_count = len(filter_offers(source_offers))
+        source_stats.append(
+            {
+                "source": name,
+                "raw_count": len(source_offers),
+                "filtered_count": filtered_count,
+                "error": error,
+            }
+        )
+
     filtered = filter_offers(collected)
-    save_reports(filtered)
+    save_reports(filtered, source_stats)
     notify_telegram(filtered)
-    print(f"Done. Total offers after filter: {len(filtered)}")
+
+    print("Source summary:")
+    for stat in source_stats:
+        error_suffix = f" (error: {stat['error']})" if stat["error"] else ""
+        print(f"{stat['source']}: raw {stat['raw_count']} / filtered {stat['filtered_count']}{error_suffix}")
+
+    print(f"Total offers after filter: {len(filtered)}")
 
 
 if __name__ == "__main__":
