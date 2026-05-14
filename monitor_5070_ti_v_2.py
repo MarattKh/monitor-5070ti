@@ -201,9 +201,9 @@ def render_results_markdown(offers: list[ProductOffer], source_stats: list[dict[
         [
             "",
             "## Offers",
-            "",
-            "| Source | Title | Price | Condition | Availability | URL |",
-            "|---|---|---:|---|---|---|",
+"",
+"| Source | Title | Price | Condition | Availability | Signal | URL |",
+"|---|---|---:|---|---|---|---|",
         ]
     )
 
