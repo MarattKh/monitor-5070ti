@@ -243,22 +243,51 @@ def save_reports(offers: list[ProductOffer], source_stats: list[dict[str, str | 
     Path("latest_ai_prompt.md").write_text(prompt + "\n", encoding="utf-8")
 
 
-def notify_telegram(offers: list[ProductOffer]) -> None:
+def notify_telegram(offers: list[ProductOffer], source_stats: list[dict[str, str | int]] | None = None) -> None:
+    if source_stats is None:
+        source_stats = []
+
     token = os.getenv("TG_BOT_TOKEN")
     chat_id = os.getenv("TG_CHAT_ID")
     if not token or not chat_id:
         return
+
     try:
         import requests
 
-        interesting = [o for o in offers if classify_signal(o) in {"good_price", "urgent_buy"}]
+        interesting = [o for o in offers if classify_signal(o) in {"urgent_buy", "good_price"}]
         if not interesting:
             return
-        rows = [f"{o.source}: {o.title} — {o.price:.0f} RUB ({classify_signal(o)})\n{o.url}" for o in interesting]
-        text = "⚡ RTX 5070 Ti сигналы:\n\n" + "\n\n".join(rows[:10])
+
+        priority = {"urgent_buy": 0, "good_price": 1}
+        interesting.sort(key=lambda o: (priority[classify_signal(o) or "good_price"], o.price))
+        top_items = interesting[:10]
+
+        lines = ["⚡ RTX 5070 Ti мониторинг", "", "Best signals:"]
+        for idx, offer in enumerate(top_items, start=1):
+            lines.extend(
+                [
+                    f"{idx}. {get_signal_label(offer)} — {offer.price:.0f} RUB — {offer.source}",
+                    offer.title,
+                    offer.url,
+                    "",
+                ]
+            )
+
+        lines.append("Source summary:")
+        if source_stats:
+            for stat in source_stats:
+                lines.append(f"{stat['source']}: raw {stat['raw_count']} / filtered {stat['filtered_count']}")
+        else:
+            lines.append("n/a")
+
+        lines.append("")
+        lines.append(f"Total signals: {len(interesting)}")
+
+        text = "\n".join(lines)[:4000]
         requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
-            data={"chat_id": chat_id, "text": text[:4000]},
+            data={"chat_id": chat_id, "text": text},
             timeout=15,
         )
     except Exception as exc:
@@ -310,7 +339,7 @@ def main() -> None:
 
     filtered = filter_offers(collected)
     save_reports(filtered, source_stats)
-    notify_telegram(filtered)
+    notify_telegram(filtered, source_stats)
 
     print("Source summary:")
     for stat in source_stats:

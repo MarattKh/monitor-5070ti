@@ -196,3 +196,105 @@ def test_results_json_csv_do_not_include_signal(tmp_path, monkeypatch):
         reader = csv.DictReader(f)
         assert "signal" not in reader.fieldnames
 
+def test_notify_telegram_skips_without_env(monkeypatch):
+    import monitor_5070_ti_v_2 as mon
+
+    calls = []
+
+    class DummyRequests:
+        @staticmethod
+        def post(*args, **kwargs):
+            calls.append((args, kwargs))
+
+    monkeypatch.delenv("TG_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("TG_CHAT_ID", raising=False)
+    monkeypatch.setattr(mon, "requests", DummyRequests, raising=False)
+    mon.notify_telegram([mk_offer("RTX 5070 Ti", price=90000)])
+    assert calls == []
+
+
+def test_notify_telegram_sends_good_and_urgent_only(monkeypatch):
+    import sys
+    import types
+    import monitor_5070_ti_v_2 as mon
+
+    calls = []
+
+    def fake_post(url, data, timeout):
+        calls.append({"url": url, "data": data, "timeout": timeout})
+
+    monkeypatch.setenv("TG_BOT_TOKEN", "token")
+    monkeypatch.setenv("TG_CHAT_ID", "chat")
+    monkeypatch.setitem(sys.modules, "requests", types.SimpleNamespace(post=fake_post))
+
+    mon.notify_telegram(
+        [
+            mk_offer("RTX 5070 Ti urgent", price=75000),
+            mk_offer("RTX 5070 Ti good", price=90000),
+            mk_offer("RTX 5070 Ti normal", price=100000),
+        ]
+    )
+
+    assert len(calls) == 1
+    text = calls[0]["data"]["text"]
+    assert "URGENT_BUY" in text
+    assert "GOOD_PRICE" in text
+    assert "RTX 5070 Ti normal" not in text
+
+
+def test_notify_telegram_orders_urgent_before_good_price(monkeypatch):
+    import sys
+    import types
+    import monitor_5070_ti_v_2 as mon
+
+    payload = {}
+
+    def fake_post(url, data, timeout):
+        payload["text"] = data["text"]
+
+    monkeypatch.setenv("TG_BOT_TOKEN", "token")
+    monkeypatch.setenv("TG_CHAT_ID", "chat")
+    monkeypatch.setitem(sys.modules, "requests", types.SimpleNamespace(post=fake_post))
+
+    mon.notify_telegram(
+        [
+            mk_offer("good lower", price=85000),
+            mk_offer("urgent", price=75000),
+            mk_offer("good higher", price=90000),
+        ]
+    )
+
+    text = payload["text"]
+    assert text.index("URGENT_BUY") < text.index("GOOD_PRICE")
+    assert text.index("good lower") < text.index("good higher")
+
+
+def test_notify_telegram_includes_source_summary(monkeypatch):
+    import sys
+    import types
+    import monitor_5070_ti_v_2 as mon
+
+    payload = {}
+
+    def fake_post(url, data, timeout):
+        payload["text"] = data["text"]
+
+    monkeypatch.setenv("TG_BOT_TOKEN", "token")
+    monkeypatch.setenv("TG_CHAT_ID", "chat")
+    monkeypatch.setitem(sys.modules, "requests", types.SimpleNamespace(post=fake_post))
+
+    mon.notify_telegram(
+        [mk_offer("RTX 5070 Ti good", price=90000)],
+        [
+            {"source": "DNS", "raw_count": 10, "filtered_count": 2, "error": ""},
+            {"source": "Ситилинк", "raw_count": 8, "filtered_count": 1, "error": ""},
+            {"source": "Регард", "raw_count": 7, "filtered_count": 1, "error": ""},
+        ],
+    )
+
+    text = payload["text"]
+    assert "Source summary:" in text
+    assert "DNS: raw 10 / filtered 2" in text
+    assert "Ситилинк: raw 8 / filtered 1" in text
+    assert "Регард: raw 7 / filtered 1" in text
+
