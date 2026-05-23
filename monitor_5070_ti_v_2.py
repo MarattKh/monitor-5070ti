@@ -8,7 +8,7 @@ import os
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from models import ProductOffer
 
@@ -186,7 +186,26 @@ def render_markdown(offers: list[ProductOffer], config: dict[str, int] | None = 
     return "\n".join(lines) + "\n"
 
 
-def render_results_markdown(offers: list[ProductOffer], source_stats: list[dict[str, str | int]], config: dict[str, int] | None = None) -> str:
+def _warnings_text(stat: dict[str, Any]) -> str:
+    warnings = stat.get("warnings", [])
+    if isinstance(warnings, list):
+        return "; ".join(str(x) for x in warnings if x)
+    return str(warnings) if warnings else ""
+
+
+def _format_source_summary_text(stat: dict[str, Any]) -> str:
+    if stat.get("blocked") is True:
+        return f"{stat['source']}: blocked / {stat.get('block_reason') or 'unknown'}"
+    return f"{stat['source']}: raw {stat['raw_count']} / filtered {stat['filtered_count']}"
+
+
+def _format_source_summary_markdown_row(stat: dict[str, Any]) -> str:
+    if stat.get("blocked") is True:
+        return f"| {stat['source']} | blocked | {stat.get('block_reason') or 'unknown'} | {_warnings_text(stat)} |"
+    return f"| {stat['source']} | {stat['raw_count']} | {stat['filtered_count']} | {stat['error']} |"
+
+
+def render_results_markdown(offers: list[ProductOffer], source_stats: list[dict[str, Any]], config: dict[str, int] | None = None) -> str:
     if config is None:
         config = load_config()
     checked_at = datetime.now(timezone.utc).isoformat()
@@ -246,9 +265,7 @@ def render_results_markdown(offers: list[ProductOffer], source_stats: list[dict[
     )
 
     for stat in source_stats:
-        lines.append(
-            f"| {stat['source']} | {stat['raw_count']} | {stat['filtered_count']} | {stat['error']} |"
-        )
+        lines.append(_format_source_summary_markdown_row(stat))
 
     lines.extend(
         [
@@ -268,7 +285,7 @@ def render_results_markdown(offers: list[ProductOffer], source_stats: list[dict[
     return "\n".join(lines) + "\n"
 
 
-def save_reports(offers: list[ProductOffer], source_stats: list[dict[str, str | int]] | None = None, config: dict[str, int] | None = None) -> None:
+def save_reports(offers: list[ProductOffer], source_stats: list[dict[str, Any]] | None = None, config: dict[str, int] | None = None) -> None:
     if source_stats is None:
         source_stats = []
     if config is None:
@@ -307,16 +324,16 @@ def _telegram_signal_offers(offers: list[ProductOffer], config: dict[str, int] |
     return interesting
 
 
-def _append_source_summary(lines: list[str], source_stats: list[dict[str, str | int]]) -> None:
+def _append_source_summary(lines: list[str], source_stats: list[dict[str, Any]]) -> None:
     lines.append("Source summary:")
     if source_stats:
         for stat in source_stats:
-            lines.append(f"{stat['source']}: raw {stat['raw_count']} / filtered {stat['filtered_count']}")
+            lines.append(_format_source_summary_text(stat))
     else:
         lines.append("n/a")
 
 
-def build_telegram_signal_text(offers: list[ProductOffer], source_stats: list[dict[str, str | int]] | None = None, config: dict[str, int] | None = None) -> str | None:
+def build_telegram_signal_text(offers: list[ProductOffer], source_stats: list[dict[str, Any]] | None = None, config: dict[str, int] | None = None) -> str | None:
     if source_stats is None:
         source_stats = []
 
@@ -345,7 +362,7 @@ def build_telegram_signal_text(offers: list[ProductOffer], source_stats: list[di
     return "\n".join(lines)[:4000]
 
 
-def build_telegram_daily_report_text(offers: list[ProductOffer], source_stats: list[dict[str, str | int]] | None = None, config: dict[str, int] | None = None) -> str:
+def build_telegram_daily_report_text(offers: list[ProductOffer], source_stats: list[dict[str, Any]] | None = None, config: dict[str, int] | None = None) -> str:
     if source_stats is None:
         source_stats = []
 
@@ -389,7 +406,7 @@ def build_telegram_daily_report_text(offers: list[ProductOffer], source_stats: l
 
 def notify_telegram(
     offers: list[ProductOffer],
-    source_stats: list[dict[str, str | int]] | None = None,
+    source_stats: list[dict[str, Any]] | None = None,
     daily_report: bool = False,
     config: dict[str, int] | None = None,
 ) -> None:
@@ -433,6 +450,18 @@ def run_source(name: str, fn) -> tuple[list[ProductOffer], str]:
         return [], str(exc)
 
 
+def run_source_with_status(name: str, fn) -> tuple[dict[str, Any], str]:
+    logger = logging.getLogger(name)
+    try:
+        result = fn()
+        if isinstance(result, dict):
+            return result, ""
+        return {"offers": result}, ""
+    except Exception as exc:
+        logger.exception("source failed: %s", exc)
+        return {"offers": [], "blocked": False, "block_reason": None, "warnings": [], "errors": 1}, str(exc)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--browser", action="store_true", help="Use Playwright browser mode for DNS and Ситилинк")
@@ -447,10 +476,14 @@ def main() -> None:
         "Регард": regard,
     }
     collected: list[ProductOffer] = []
-    source_stats: list[dict[str, str | int]] = []
+    source_stats: list[dict[str, Any]] = []
 
     for name, module in sources.items():
-        if module in (dns, citilink):
+        status: dict[str, Any] = {}
+        if name == "DNS" and hasattr(module, "parse_offers_with_status"):
+            status, error = run_source_with_status(name, lambda m=module: m.parse_offers_with_status(browser_mode=args.browser))
+            source_offers = list(status.get("offers", []))
+        elif module in (dns, citilink):
             source_offers, error = run_source(name, lambda m=module: m.parse_offers(browser_mode=args.browser))
         else:
             source_offers, error = run_source(name, module)
@@ -464,6 +497,9 @@ def main() -> None:
                 "raw_count": len(source_offers),
                 "filtered_count": filtered_count,
                 "error": error,
+                "blocked": bool(status.get("blocked", False)),
+                "block_reason": status.get("block_reason"),
+                "warnings": status.get("warnings", []),
             }
         )
 
@@ -474,7 +510,10 @@ def main() -> None:
     print("Source summary:")
     for stat in source_stats:
         error_suffix = f" (error: {stat['error']})" if stat["error"] else ""
-        print(f"{stat['source']}: raw {stat['raw_count']} / filtered {stat['filtered_count']}{error_suffix}")
+        if stat.get("blocked") is True:
+            print(_format_source_summary_text(stat))
+        else:
+            print(f"{_format_source_summary_text(stat)}{error_suffix}")
 
     print(f"Total offers after filter: {len(filtered)}")
 

@@ -93,6 +93,30 @@ def test_results_md_contains_summary_and_source_summary(tmp_path, monkeypatch):
     assert "| DNS | 3 | 1 |  |" in content
 
 
+def test_results_md_source_summary_shows_blocked_dns(tmp_path, monkeypatch):
+    import monitor_5070_ti_v_2 as mon
+
+    monkeypatch.chdir(tmp_path)
+    mon.save_reports(
+        [],
+        [
+            {
+                "source": "DNS",
+                "raw_count": 0,
+                "filtered_count": 0,
+                "error": "",
+                "blocked": True,
+                "block_reason": "403 forbidden",
+                "warnings": ["DNS access forbidden. Manual verification required."],
+            }
+        ],
+    )
+
+    content = Path("results.md").read_text(encoding="utf-8")
+    assert "| DNS | blocked | 403 forbidden | DNS access forbidden. Manual verification required. |" in content
+    assert "| DNS | 0 | 0 |" not in content
+
+
 def test_no_search_urls_in_results():
     offers = [
         mk_offer("RTX 5070 Ti", url="https://shop.example/search/?q=rtx+5070+ti"),
@@ -120,6 +144,53 @@ def test_dns_fixture_card_parsing_and_filtering():
     assert filtered[0].price == 89999
     assert all("РІРѕРґРѕР±Р»РѕРє" not in x.title.lower() for x in filtered)
     assert all(" 5070" not in x.title.lower() or "ti" in x.title.lower() for x in filtered)
+
+
+def test_dns_detects_blocked_html():
+    from parsers import dns
+
+    html = "<html><head><title>403 Forbidden</title></head><body>Доступ к сайту запрещен</body></html>"
+
+    assert dns.detect_block_reason(html) == "403 forbidden"
+    assert dns.detect_block_reason("<html><body>Доступ к сайту запрещен</body></html>") == "403 forbidden"
+    assert dns.detect_block_reason("<html><body>catalog products</body></html>") is None
+
+
+def test_dns_parse_offers_with_status_returns_blocked_status(monkeypatch):
+    from parsers import dns
+
+    html = "<html><head><title>403 Forbidden</title></head><body>Доступ к сайту запрещен</body></html>"
+    monkeypatch.setattr(dns, "_download", lambda url: html)
+
+    result = dns.parse_offers_with_status()
+
+    assert result == {
+        "offers": [],
+        "blocked": True,
+        "block_reason": "403 forbidden",
+        "warnings": ["DNS access forbidden. Manual verification required."],
+        "errors": 1,
+    }
+    assert dns.parse_offers() == []
+
+
+def test_dns_parse_offers_with_status_treats_401_as_blocked(monkeypatch):
+    from urllib.error import HTTPError
+
+    from parsers import dns
+
+    def raise_401(url):
+        raise HTTPError(url, 401, "Unauthorized", hdrs=None, fp=None)
+
+    monkeypatch.setattr(dns, "_download", raise_401)
+
+    result = dns.parse_offers_with_status()
+
+    assert result["blocked"] is True
+    assert result["block_reason"] == "401 unauthorized"
+    assert result["warnings"] == ["DNS access forbidden. Manual verification required."]
+    assert result["errors"] == 1
+    assert result["offers"] == []
 
 
 def test_regard_fixture_card_parsing_and_filtering():
@@ -298,6 +369,43 @@ def test_notify_telegram_includes_source_summary(monkeypatch):
     assert "Ситилинк: raw 8 / filtered 1" in text
     assert "Регард: raw 7 / filtered 1" in text
 
+
+def test_notify_telegram_source_summary_shows_blocked_dns(monkeypatch):
+    import sys
+    import types
+    import monitor_5070_ti_v_2 as mon
+
+    payload = {}
+
+    def fake_post(url, data, timeout):
+        payload["text"] = data["text"]
+
+    monkeypatch.setenv("TG_BOT_TOKEN", "token")
+    monkeypatch.setenv("TG_CHAT_ID", "chat")
+    monkeypatch.setitem(sys.modules, "requests", types.SimpleNamespace(post=fake_post))
+
+    mon.notify_telegram(
+        [mk_offer("RTX 5070 Ti good", price=90000)],
+        [
+            {
+                "source": "DNS",
+                "raw_count": 0,
+                "filtered_count": 0,
+                "error": "",
+                "blocked": True,
+                "block_reason": "403 forbidden",
+                "warnings": ["DNS access forbidden. Manual verification required."],
+            },
+            {"source": "Ситилинк", "raw_count": 8, "filtered_count": 1, "error": ""},
+        ],
+    )
+
+    text = payload["text"]
+    assert "DNS: blocked / 403 forbidden" in text
+    assert "DNS: raw 0 / filtered 0" not in text
+    assert "Ситилинк: raw 8 / filtered 1" in text
+
+
 def test_notify_telegram_daily_report_sends_even_without_signals(monkeypatch):
     import sys
     import types
@@ -381,6 +489,7 @@ def test_daily_report_cli_flag_passed_to_notify(monkeypatch):
     monkeypatch.setattr(mon, "save_reports", lambda offers, source_stats=None, config=None: None)
     monkeypatch.setattr(mon, "notify_telegram", lambda offers, source_stats=None, daily_report=False, config=None: captured.update({"daily_report": daily_report}))
     monkeypatch.setattr(mon.dns, "parse_offers", lambda browser_mode=False: [])
+    monkeypatch.setattr(mon.dns, "parse_offers_with_status", lambda browser_mode=False: {"offers": [], "blocked": False, "block_reason": None, "warnings": [], "errors": 0})
     monkeypatch.setattr(mon.citilink, "parse_offers", lambda browser_mode=False: [])
     monkeypatch.setattr(mon.regard, "parse_offers", lambda: [])
     monkeypatch.setattr("sys.argv", ["monitor_5070_ti_v_2.py", "--browser", "--daily-report"])
