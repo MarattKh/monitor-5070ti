@@ -678,3 +678,26 @@ def test_dns_parse_product_link_fallback_card():
     assert cards[0]["url"] == "/product/abc123/videokarta-palit-geforce-rtx-5070-ti-gamingpro/"
     assert cards[0]["price"] == 89999
     assert cards[0]["availability"] == "unknown"
+
+
+def test_citilink_smoke_detects_block_signs():
+    from tools import smoke_citilink
+
+    html = "<html><title>HTTP 403</title><body>Access denied by security check</body></html>"
+
+    signs = smoke_citilink.detect_signs(html, status=403)
+
+    assert signs["block"] is True
+    assert signs["access_denied"] is True
+
+
+def test_citilink_smoke_counts_fixture_candidates():
+    from tools import smoke_citilink
+
+    html = Path("tests/fixtures/citilink_search.html").read_text(encoding="utf-8")
+
+    counts = smoke_citilink.count_candidates(html)
+
+    assert counts["snippet_titles"] == 3
+    assert counts["snippet_prices"] == 3
+    assert counts["parsed_cards"] == 3
