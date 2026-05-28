@@ -1,4 +1,4 @@
-﻿{
+{
   "tasks": [
     {
       "id": "stage_1n_report_citilink_blocked_status",
@@ -15,6 +15,14 @@
       "branch": "agent/stage-1n-price-history",
       "pr_title": "Add durable offer price history",
       "pr_body": "Add a conservative durable history log for offers, separate from notifications."
+    },
+    {
+      "id": "stage_1o_agent_scheduler_runbook",
+      "status": "pending",
+      "task": "tools/agent_tasks/stage_1o_agent_scheduler_runbook.md",
+      "branch": "agent/stage-1o-agent-scheduler-runbook",
+      "pr_title": "Add agent cycle scheduler runbook",
+      "pr_body": "Document the autonomous Windows scheduled agent cycle and expected empty-queue behavior."
     }
   ]
 }
