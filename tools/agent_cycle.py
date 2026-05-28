@@ -125,9 +125,13 @@ def resolve_path(raw_path: str | Path, *, base: Path = ROOT) -> Path:
     return path
 
 
+def read_json(path: Path) -> Any:
+    return json.loads(path.read_text(encoding="utf-8-sig"))
+
+
 def load_queue(path: Path) -> list[dict[str, Any]]:
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        raw = read_json(path)
     except FileNotFoundError as exc:
         raise CycleError(f"Queue file does not exist: {path}") from exc
     except json.JSONDecodeError as exc:
@@ -151,7 +155,7 @@ def load_state(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {"tasks": {}}
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        raw = read_json(path)
     except json.JSONDecodeError as exc:
         raise CycleError(f"State file is not valid JSON: {path}: {exc}") from exc
     if not isinstance(raw, dict):
