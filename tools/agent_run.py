@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+import locale
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -16,6 +17,28 @@ DEFAULT_LOG_PATH = Path(r"C:\ProgramData\MonitorAgent\agent-last.log")
 
 class RunnerError(RuntimeError):
     pass
+
+
+def configure_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure:
+            try:
+                reconfigure(errors="replace")
+            except (OSError, ValueError):
+                pass
+
+
+def safe_console_write(message: str = "", *, stream=None) -> None:
+    stream = stream or sys.stdout
+    try:
+        stream.write(message + "\n")
+        stream.flush()
+    except UnicodeEncodeError:
+        encoding = getattr(stream, "encoding", None) or locale.getpreferredencoding(False) or "utf-8"
+        safe_message = message.encode(encoding, errors="replace").decode(encoding, errors="replace")
+        stream.write(safe_message + "\n")
+        stream.flush()
 
 
 class Logger:
@@ -34,7 +57,7 @@ class Logger:
 
     def write(self, message: str = "") -> None:
         message = redact_secrets(message)
-        print(message)
+        safe_console_write(message)
         if self._fh:
             self._fh.write(message + "\n")
             self._fh.flush()
@@ -223,6 +246,7 @@ def run_workflow(args: argparse.Namespace, runner: CommandRunner) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    configure_stdio()
     args = parse_args(argv)
     logger = Logger()
     runner = CommandRunner(args.dry_run, logger)
