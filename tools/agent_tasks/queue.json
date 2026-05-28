@@ -1,28 +1,60 @@
-{
-  "tasks": [
-    {
-      "id": "stage_1n_report_citilink_blocked_status",
-      "status": "pending",
-      "task": "tools/agent_tasks/stage_1n_report_citilink_blocked_status.md",
-      "branch": "agent/stage-1n-report-citilink-blocked-status",
-      "pr_title": "Report Citilink blocked status clearly",
-      "pr_body": "Make the Source summary report Ситилинк as blocked / 429 too many requests when the source is blocked, instead of raw 0 / filtered 0."
-    },
-    {
-      "id": "stage_1n_price_history",
-      "status": "pending",
-      "task": "tools/agent_tasks/stage_1n_price_history.md",
-      "branch": "agent/stage-1n-price-history",
-      "pr_title": "Add durable offer price history",
-      "pr_body": "Add a conservative durable history log for offers, separate from notifications."
-    },
-    {
-      "id": "stage_1o_agent_scheduler_runbook",
-      "status": "pending",
-      "task": "tools/agent_tasks/stage_1o_agent_scheduler_runbook.md",
-      "branch": "agent/stage-1o-agent-scheduler-runbook",
-      "pr_title": "Add agent cycle scheduler runbook",
-      "pr_body": "Document the autonomous Windows scheduled agent cycle and expected empty-queue behavior."
-    }
-  ]
+﻿{
+    "tasks":  [
+                  {
+                      "id":  "stage_1n_report_citilink_blocked_status",
+                      "status":  "pending",
+                      "task":  "tools/agent_tasks/stage_1n_report_citilink_blocked_status.md",
+                      "branch":  "agent/stage-1n-report-citilink-blocked-status",
+                      "pr_title":  "Report Citilink blocked status clearly",
+                      "pr_body":  "Make the Source summary report Ситилинк as blocked / 429 too many requests when the source is blocked, instead of raw 0 / filtered 0."
+                  },
+                  {
+                      "id":  "stage_1n_price_history",
+                      "status":  "pending",
+                      "task":  "tools/agent_tasks/stage_1n_price_history.md",
+                      "branch":  "agent/stage-1n-price-history",
+                      "pr_title":  "Add durable offer price history",
+                      "pr_body":  "Add a conservative durable history log for offers, separate from notifications."
+                  },
+                  {
+                      "id":  "stage_1o_agent_scheduler_runbook",
+                      "status":  "pending",
+                      "task":  "tools/agent_tasks/stage_1o_agent_scheduler_runbook.md",
+                      "branch":  "agent/stage-1o-agent-scheduler-runbook",
+                      "pr_title":  "Add agent cycle scheduler runbook",
+                      "pr_body":  "Document the autonomous Windows scheduled agent cycle and expected empty-queue behavior."
+                  },
+                  {
+                      "id":  "stage_1o_agent_cycle_empty_queue_tests",
+                      "pr_body":  "Add regression coverage for empty queue mode and completed state entries.",
+                      "branch":  "agent/stage-1o-agent-cycle-empty-queue-tests",
+                      "pr_title":  "Strengthen agent cycle empty queue tests",
+                      "status":  "pending",
+                      "task":  "tools/agent_tasks/stage_1o_agent_cycle_empty_queue_tests.md"
+                  },
+                  {
+                      "id":  "stage_1o_queue_state_hygiene",
+                      "pr_body":  "Add a helper to show runnable, completed, failed, and review-needed agent tasks.",
+                      "branch":  "agent/stage-1o-queue-state-hygiene",
+                      "pr_title":  "Add agent queue status helper",
+                      "status":  "pending",
+                      "task":  "tools/agent_tasks/stage_1o_queue_state_hygiene.md"
+                  },
+                  {
+                      "id":  "stage_1o_price_history_summary",
+                      "pr_body":  "Add a local helper that summarizes the durable JSONL offer history.",
+                      "branch":  "agent/stage-1o-price-history-summary",
+                      "pr_title":  "Add price history summary helper",
+                      "status":  "pending",
+                      "task":  "tools/agent_tasks/stage_1o_price_history_summary.md"
+                  },
+                  {
+                      "id":  "stage_1o_source_status_regression",
+                      "pr_body":  "Add regression coverage for blocked and normal retailer source status reporting.",
+                      "branch":  "agent/stage-1o-source-status-regression",
+                      "pr_title":  "Strengthen source blocked status tests",
+                      "status":  "pending",
+                      "task":  "tools/agent_tasks/stage_1o_source_status_regression.md"
+                  }
+              ]
 }
