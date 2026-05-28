@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 import tools.agent_run as agent_run
+import tools.agent_cycle as agent_cycle
 
 
 class MemoryLogger:
@@ -161,3 +162,33 @@ def test_run_workflow_skips_commit_when_no_changes(tmp_path, monkeypatch):
     commands = [cmd for cmd, _ in runner.commands]
     assert ["git", "commit", "-m", "Run agent task task"] not in commands
     assert ["git", "push", "-u", "origin", "agent/noop"] not in commands
+
+
+class StrictEncodedStream:
+    encoding = "cp1251"
+
+    def __init__(self):
+        self.lines = []
+
+    def write(self, value):
+        value.encode(self.encoding, errors="strict")
+        self.lines.append(value)
+
+    def flush(self):
+        pass
+
+
+@pytest.mark.parametrize("module", [agent_run, agent_cycle])
+def test_logger_write_is_unicode_safe_for_cp1251_console_and_keeps_utf8_log(tmp_path, monkeypatch, module):
+    stream = StrictEncodedStream()
+    monkeypatch.setattr(module.sys, "stdout", stream)
+    log_path = tmp_path / "agent.log"
+    logger = module.Logger(log_path)
+    message = "BOM:\ufeff Cyrillic: \u041f\u0440\u0438\u0432\u0435\u0442 emoji: \U0001f680 replacement: \ufffd"
+
+    logger.write(message)
+    logger.close()
+
+    assert "BOM:?" in "".join(stream.lines)
+    assert "Cyrillic: \u041f\u0440\u0438\u0432\u0435\u0442" in "".join(stream.lines)
+    assert log_path.read_text(encoding="utf-8") == message + "\n"
