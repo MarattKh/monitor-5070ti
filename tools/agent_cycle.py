@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import json
@@ -449,7 +449,7 @@ def run_cycle(args: argparse.Namespace, runner: CommandRunner) -> int:
     runner.logger.write(f"State: {state_path}")
     runner.logger.write(f"Selected tasks: {len(tasks)}")
 
-    if notifier.enabled and notifier.should_send("dirty_worktree"):
+    if notifier.enabled and getattr(notifier, "should_send", lambda _event: True)("dirty_worktree"):
         dirty = check_dirty_worktree(runner)
         if dirty:
             notify_event(
@@ -596,3 +596,4 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
