@@ -59,6 +59,30 @@ def test_load_queue_accepts_tasks_object(tmp_path):
     assert tasks[0]["branch"] == "agent/a"
 
 
+def test_load_queue_accepts_utf8_bom(tmp_path):
+    queue_path = tmp_path / "queue.json"
+    queue_path.write_text(
+        json.dumps(
+            {
+                "tasks": [
+                    {
+                        "id": "task_bom",
+                        "status": "pending",
+                        "task": "tools/agent_tasks/bom.md",
+                        "branch": "agent/bom",
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8-sig",
+    )
+
+    tasks = agent_cycle.load_queue(queue_path)
+
+    assert tasks[0]["id"] == "task_bom"
+
+
 def test_select_pending_tasks_skips_completed_state_and_non_pending_queue_items():
     queue = [
         {"id": "done", "status": "pending", "task": "a.md", "branch": "agent/done"},
