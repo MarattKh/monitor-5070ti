@@ -106,7 +106,7 @@
     },
     {
       "id": "stage_2a_offer_deduplication",
-      "status": "pending",
+      "status": "completed",
       "task": "tools/agent_tasks/stage_2a_offer_deduplication.md",
       "branch": "agent/stage-2a-offer-deduplication",
       "pr_title": "Add RTX offer deduplication",
