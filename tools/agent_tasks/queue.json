@@ -58,7 +58,7 @@
     },
     {
       "id": "stage_1p_terminal_state_selection",
-      "status": "pending",
+      "status": "completed",
       "task": "tools/agent_tasks/stage_1p_terminal_state_selection.md",
       "branch": "agent/stage-1p-terminal-state-selection",
       "pr_title": "Skip terminal agent task states",
