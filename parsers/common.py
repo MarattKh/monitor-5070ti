@@ -10,9 +10,9 @@ from urllib.request import Request, urlopen
 from models import ProductOffer
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-PRICE_RE = re.compile(r"(\d[\d\s]{2,9})\s?(₽|руб|RUB)", re.IGNORECASE)
+PRICE_RE = re.compile(r"(\d[\d\s\u00a0]{2,9})\s?(₽|руб|RUB)", re.IGNORECASE)
 TAG_RE = re.compile(r"<[^>]+>")
-HREF_RE = re.compile(r"href=[\"\']([^\"\']+)[\"\']", re.IGNORECASE)
+HREF_RE = re.compile(r"href=[\"']([^\"']+)[\"']", re.IGNORECASE)
 
 
 def parse_rub(value: str) -> float | None:
@@ -37,12 +37,12 @@ def _is_search_url(url: str) -> bool:
     return "?q=" in u or "?text=" in u or "/search" in u
 
 
-def extract_product_offers(source: str, search_url: str, seller: str = "") -> list[ProductOffer]:
-    try:
-        page = _download(search_url)
-    except URLError:
-        return []
+def _debug_file_name(source: str) -> str:
+    safe = re.sub(r"[^a-zA-Z0-9_-]+", "_", source.lower()).strip("_")
+    return safe or "source"
 
+
+def _extract_product_offers_from_html(source: str, search_url: str, page: str, seller: str = "") -> list[ProductOffer]:
     now = datetime.now(timezone.utc).isoformat()
     offers: list[ProductOffer] = []
 
@@ -50,8 +50,8 @@ def extract_product_offers(source: str, search_url: str, seller: str = "") -> li
         price = parse_rub(m.group(1))
         if not price:
             continue
-        start = max(0, m.start() - 800)
-        end = min(len(page), m.end() + 800)
+        start = max(0, m.start() - 1200)
+        end = min(len(page), m.end() + 1200)
         chunk_html = page[start:end]
 
         href_match = HREF_RE.search(chunk_html)
@@ -90,5 +90,25 @@ def extract_product_offers(source: str, search_url: str, seller: str = "") -> li
     return offers
 
 
-def scrape_search_page(source: str, url: str, seller: str = "") -> list[ProductOffer]:
-    return extract_product_offers(source=source, search_url=url, seller=seller)
+def extract_product_offers(source: str, search_url: str, seller: str = "", browser_fallback: bool = True) -> list[ProductOffer]:
+    try:
+        page = _download(search_url)
+    except URLError:
+        page = ""
+
+    offers = _extract_product_offers_from_html(source, search_url, page, seller) if page else []
+    if offers or not browser_fallback:
+        return offers
+
+    try:
+        from parsers.browser import fetch_html
+
+        browser_page = fetch_html(search_url, save_to=f"debug_html/{_debug_file_name(source)}.html")
+    except Exception:
+        return offers
+
+    return _extract_product_offers_from_html(source, search_url, browser_page, seller)
+
+
+def scrape_search_page(source: str, url: str, seller: str = "", browser_fallback: bool = True) -> list[ProductOffer]:
+    return extract_product_offers(source=source, search_url=url, seller=seller, browser_fallback=browser_fallback)
