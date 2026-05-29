@@ -114,7 +114,7 @@
     },
     {
       "id": "stage_2a_history_rotation",
-      "status": "pending",
+      "status": "needs_review",
       "task": "tools/agent_tasks/stage_2a_history_rotation.md",
       "branch": "agent/stage-2a-history-rotation",
       "pr_title": "Add price history maintenance helper",
@@ -122,7 +122,7 @@
     },
     {
       "id": "stage_2a_source_stats_summary",
-      "status": "pending",
+      "status": "completed",
       "task": "tools/agent_tasks/stage_2a_source_stats_summary.md",
       "branch": "agent/stage-2a-source-stats-summary",
       "pr_title": "Add source stats summary helper",
