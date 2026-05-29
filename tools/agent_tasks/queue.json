@@ -90,7 +90,7 @@
     },
     {
       "id": "stage_1p_stale_branch_cleanup",
-      "status": "pending",
+      "status": "completed",
       "task": "tools/agent_tasks/stage_1p_stale_branch_cleanup.md",
       "branch": "agent/stage-1p-stale-branch-cleanup",
       "pr_title": "Improve existing task branch recovery",
