@@ -2,7 +2,7 @@
   "tasks": [
     {
       "id": "stage_1n_report_citilink_blocked_status",
-      "status": "pending",
+      "status": "completed",
       "task": "tools/agent_tasks/stage_1n_report_citilink_blocked_status.md",
       "branch": "agent/stage-1n-report-citilink-blocked-status",
       "pr_title": "Report Citilink source status clearly",
@@ -10,7 +10,7 @@
     },
     {
       "id": "stage_1n_price_history",
-      "status": "pending",
+      "status": "completed",
       "task": "tools/agent_tasks/stage_1n_price_history.md",
       "branch": "agent/stage-1n-price-history",
       "pr_title": "Add durable offer price history",
@@ -26,7 +26,7 @@
     },
     {
       "id": "stage_1o_agent_cycle_empty_queue_tests",
-      "status": "pending",
+      "status": "completed",
       "task": "tools/agent_tasks/stage_1o_agent_cycle_empty_queue_tests.md",
       "branch": "agent/stage-1o-agent-cycle-empty-queue-tests",
       "pr_title": "Strengthen agent cycle empty queue tests",
