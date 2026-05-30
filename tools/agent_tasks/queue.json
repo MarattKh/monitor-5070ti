@@ -74,7 +74,7 @@
     },
     {
       "id": "stage_1p_pr_creation_recovery",
-      "status": "pending",
+      "status": "completed",
       "task": "tools/agent_tasks/stage_1p_pr_creation_recovery.md",
       "branch": "agent/stage-1p-pr-creation-recovery",
       "pr_title": "Improve agent PR creation recovery",
