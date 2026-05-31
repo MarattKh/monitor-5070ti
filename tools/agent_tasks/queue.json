@@ -143,6 +143,22 @@
       "branch": "agent/stage-2b-enable-existing-sources",
       "pr_title": "Enable existing RTX retailer sources",
       "pr_body": "Wire existing retailer parser modules into the daily monitor while preserving per-source failure isolation."
+    },
+    {
+      "id": "stage_2d_yandex_market_filter_fix",
+      "status": "pending",
+      "task": "tools/agent_tasks/stage_2d_yandex_market_filter_fix.md",
+      "branch": "agent/stage-2d-yandex-market-filter-fix",
+      "pr_title": "Fix Yandex Market offers rejected by filter",
+      "pr_body": "Make valid Yandex RTX 5070 Ti offers pass the URL filter without weakening rejection for other sources."
+    },
+    {
+      "id": "stage_3a_concurrency_lock",
+      "status": "pending",
+      "task": "tools/agent_tasks/stage_3a_concurrency_lock.md",
+      "branch": "agent/stage-3a-concurrency-lock",
+      "pr_title": "Add concurrency lock to agent cycle",
+      "pr_body": "Prevent overlapping agent cycle runs by acquiring an exclusive lock file at cycle start."
     }
   ]
 }
