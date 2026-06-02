@@ -8,6 +8,7 @@ from models import ProductOffer
 from parsers.citilink import parse_cards as parse_citilink_cards
 from parsers.dns import parse_cards as parse_dns_cards
 from parsers.regard import parse_cards as parse_regard_cards
+from parsers.yandex_market import parse_cards as parse_yandex_cards
 
 
 def mk_offer(title: str, raw: str = "", price: float = 100000, url: str = "https://example.com/product/1", source: str = "DNS") -> ProductOffer:
@@ -430,6 +431,18 @@ def test_regard_fixture_card_parsing_and_filtering():
     assert "Windforce" in filtered[0].title
     assert "/product/737606/" in filtered[0].url
     assert filtered[0].price == 92500
+
+
+def test_yandex_market_fixture_card_parsing_and_filtering():
+    html = Path("tests/fixtures/yandex_market_search.html").read_text(encoding="utf-8")
+    cards = parse_yandex_cards(html)
+    offers = [mk_offer(c["title"], price=c["price"], url=c["url"]) for c in cards]
+    filtered = filter_offers(offers)
+    assert len(filtered) == 1
+    assert "5070" in filtered[0].title
+    assert "Ti" in filtered[0].title or "TI" in filtered[0].title.upper()
+    assert filtered[0].price == 98940
+    assert "/card/" in filtered[0].url
 
 
 def test_citilink_fixture_card_parsing_and_filtering():
