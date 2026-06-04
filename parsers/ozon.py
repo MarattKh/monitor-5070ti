@@ -3,10 +3,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import html as html_lib
 import re
+from urllib.error import URLError
 from urllib.parse import urljoin
 
 from models import ProductOffer
-from parsers.common import parse_rub, scrape_search_page
+from parsers.browser import fetch_html
+from parsers.common import _download, parse_rub
 
 try:
     from bs4 import BeautifulSoup
@@ -16,6 +18,10 @@ except ImportError:  # pragma: no cover
 SEARCH_URL = "https://www.ozon.ru/search/?text=rtx%205070%20ti"
 BASE_URL = "https://www.ozon.ru"
 SOURCE = "Ozon"
+
+# STATUS: blocked — Ozon returns abt-challenge antibot page to headless Playwright — as of 2026-06-04
+
+OZON_BLOCK_WARNING = "Ozon access blocked. Manual verification required."
 PRICE_RE = re.compile(r"(\d[\d\s\u00a0]{2,11})\s*(?:\u20bd|\u0440\u0443\u0431|RUB)", re.IGNORECASE)
 CARD_RE = re.compile(r"<(?P<tag>[a-z0-9-]+)[^>]*(?:tile-root|product-card|search-result|widget-search-result)[^>]*>.*?</(?P=tag)>", re.IGNORECASE | re.DOTALL)
 HREF_RE = re.compile(r"href=[\"']([^\"']+)[\"']", re.IGNORECASE)
@@ -178,23 +184,79 @@ def parse_browser_html(html: str) -> list[ProductOffer]:
     return _extract_with_regex(html)
 
 
-def parse_offers_browser() -> list[ProductOffer]:
+def detect_block_reason(html: str) -> str | None:
+    normalized = html.lower()
+    if "abt-challenge" in normalized or "not a robot" in normalized:
+        return "antibot challenge (abt-challenge)"
+    if "429 too many requests" in normalized or "too many requests" in normalized:
+        return "429 too many requests"
+    if (
+        "403 forbidden" in normalized
+        or "access denied" in normalized
+        or "доступ запрещ" in normalized
+    ):
+        return "403 forbidden"
+    return None
+
+
+def parse_offers_with_status(browser_mode: bool = False) -> dict:
     try:
-        from parsers.browser import fetch_html_safe
-    except ImportError:
-        return []
+        if browser_mode:
+            html = fetch_html(
+                SEARCH_URL,
+                save_to="debug_html/ozon.html",
+                wait_selectors=[
+                    "[class*=\"tile-root\"]",
+                    "[class*=\"product-card\"]",
+                    "[data-widget*=\"search\"]",
+                ],
+                extra_delay_ms=2500,
+            )
+        else:
+            html = _download(SEARCH_URL)
+    except URLError as exc:
+        code = getattr(exc, "code", None)
+        if code in (401, 403, 429):
+            reason_map = {401: "401 unauthorized", 403: "403 forbidden", 429: "429 too many requests"}
+            return {
+                "offers": [],
+                "blocked": True,
+                "block_reason": reason_map[code],
+                "warnings": [OZON_BLOCK_WARNING],
+                "errors": 1,
+            }
+        return {
+            "offers": [],
+            "blocked": False,
+            "block_reason": None,
+            "warnings": [str(exc) or "Ozon download failed."],
+            "errors": 1,
+        }
 
-    html = fetch_html_safe(
-        SEARCH_URL,
-        save_to="debug_html/ozon.html",
-        wait_selectors=["[class*=\"tile-root\"]", "[class*=\"product-card\"]", "[data-widget*=\"search\"]"],
-        extra_delay_ms=2500,
-    )
-    return parse_browser_html(html)
+    block_reason = detect_block_reason(html)
+    if block_reason:
+        return {
+            "offers": [],
+            "blocked": True,
+            "block_reason": block_reason,
+            "warnings": [OZON_BLOCK_WARNING],
+            "errors": 1,
+        }
+
+    offers = parse_browser_html(html)
+    return {
+        "offers": offers,
+        "blocked": False,
+        "block_reason": None,
+        "warnings": [] if offers else [
+            "Ozon HTML contained no parsed product cards. Possible parser mismatch or empty state."
+        ],
+        "errors": 0 if offers else 1,
+    }
 
 
-def parse_offers():
-    offers = scrape_search_page(source=SOURCE, url=SEARCH_URL, browser_fallback=False)
-    if offers:
-        return offers
-    return parse_offers_browser()
+def parse_offers(browser_mode: bool = False) -> list[ProductOffer]:
+    status = parse_offers_with_status(browser_mode)
+    if status["offers"] or browser_mode or status["blocked"] or status["errors"]:
+        return status["offers"]
+    return parse_offers_with_status(browser_mode=True)["offers"]

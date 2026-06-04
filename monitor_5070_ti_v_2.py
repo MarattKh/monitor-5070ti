@@ -24,7 +24,6 @@ from parsers import (
     aliexpress,
     avito,
     cdek_shopping,
-    computeruniverse,
     dns,
     eldorado,
     mvideo,
@@ -59,14 +58,13 @@ ENABLED_SOURCES: tuple[tuple[str, Any], ...] = (
     ("Wildberries", wildberries),
     ("Мегамаркет", megamarket),
     ("AliExpress", aliexpress),
-    ("ComputerUniverse", computeruniverse),
     ("СДЭК Shopping", cdek_shopping),
     ("Ozon", ozon),
     ("Яндекс Маркет", yandex_market),
     ("Avito", avito),
 )
 
-STATUS_AWARE_SOURCE_NAMES = {"DNS", "Ситилинк"}
+STATUS_AWARE_SOURCE_NAMES = {"DNS", "Ситилинк", "Ozon"}
 YANDEX_MARKET_OFFER_QUERY_KEYS = {"sku", "offerid", "waremd5"}
 
 
