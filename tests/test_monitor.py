@@ -1253,11 +1253,18 @@ def test_enabled_sources_include_existing_retailer_modules():
     assert sources["Wildberries"] is mon.wildberries
     assert sources["Мегамаркет"] is mon.megamarket
     assert sources["AliExpress"] is mon.aliexpress
-    assert sources["ComputerUniverse"] is mon.computeruniverse
+    assert "ComputerUniverse" not in sources
     assert sources["СДЭК Shopping"] is mon.cdek_shopping
     assert sources["Ozon"] is mon.ozon
     assert sources["Яндекс Маркет"] is mon.yandex_market
     assert sources["Avito"] is mon.avito
+
+
+def test_ozon_is_status_aware_and_has_parse_offers_with_status():
+    import monitor_5070_ti_v_2 as mon
+
+    assert "Ozon" in mon.STATUS_AWARE_SOURCE_NAMES
+    assert hasattr(mon.ozon, "parse_offers_with_status")
 
 
 def test_main_attempts_multiple_existing_sources_and_isolates_failures(monkeypatch):
