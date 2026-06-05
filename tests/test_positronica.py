@@ -150,3 +150,91 @@ def test_positronica_in_enabled_sources():
 
 def test_positronica_module_in_enabled_sources():
     assert dict(mon.ENABLED_SOURCES)["Позитроника"] is positronica
+
+
+# ── Part-code recognition tests ──────────────────────────────────────────────
+
+def test_is_rtx_5070_ti_accepts_gigabyte_n507t():
+    """GV-N507T… must be accepted via OEM part-code (compact contains 'n507t')."""
+    assert mon.is_rtx_5070_ti(
+        "Видеокарта Gigabyte GV-N507TEAGLEOC ICE-16GD 16ГБ, RET",
+        "Видеокарта Gigabyte GV-N507TEAGLEOC ICE-16GD 16ГБ, RET",
+    )
+
+
+def test_is_rtx_5070_ti_rejects_gigabyte_n5070_non_ti():
+    """GV-N5070… (no T suffix) must NOT be accepted — that's the non-Ti 5070."""
+    assert not mon.is_rtx_5070_ti(
+        "Видеокарта Gigabyte GV-N5070EAGLE-16GD 16ГБ",
+        "Видеокарта Gigabyte GV-N5070EAGLE-16GD 16ГБ",
+    )
+
+
+def test_is_rtx_5070_ti_rejects_5060_ti():
+    """RTX 5060 Ti cards must never pass as 5070 Ti."""
+    assert not mon.is_rtx_5070_ti(
+        "Видеокарта Asus DUAL-RTX5060TI-O16G-EVO 16ГБ",
+        "Видеокарта Asus DUAL-RTX5060TI-O16G-EVO 16ГБ",
+    )
+
+
+def test_is_rtx_5070_ti_rejects_5080():
+    assert not mon.is_rtx_5070_ti(
+        "Видеокарта MSI RTX 5080 16G VENTUS 3X",
+        "Видеокарта MSI RTX 5080 16G VENTUS 3X",
+    )
+
+
+def test_is_rtx_5070_ti_rejects_5090():
+    assert not mon.is_rtx_5070_ti(
+        "Видеокарта ASUS ROG STRIX RTX 5090 32G",
+        "Видеокарта ASUS ROG STRIX RTX 5090 32G",
+    )
+
+
+def test_filter_passes_gigabyte_n507t_offer(monkeypatch):
+    """A card with GV-N507T… in the title must survive filter_offers."""
+    from monitor_5070_ti_v_2 import filter_offers
+    from models import ProductOffer
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc).isoformat()
+    offer = ProductOffer(
+        source="Позитроника",
+        title="Видеокарта Gigabyte GV-N507TWINGOC ICE-16GD 16ГБ, RET",
+        price=110_490.0,
+        currency="RUB",
+        url="https://www.positronica.ru/product/videokarta-gigabyte-gv-n507t-16gd/",
+        condition="new",
+        seller="Позитроника",
+        availability="in_stock",
+        checked_at=now,
+        confidence=0.9,
+        raw_text="Видеокарта Gigabyte GV-N507TWINGOC ICE-16GD 16ГБ, RET",
+    )
+    filtered = filter_offers([offer])
+    assert len(filtered) == 1
+
+
+def test_filter_rejects_5070_non_ti_offer():
+    """A non-Ti RTX 5070 offer must be rejected even if price/source are valid."""
+    from monitor_5070_ti_v_2 import filter_offers
+    from models import ProductOffer
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc).isoformat()
+    offer = ProductOffer(
+        source="Позитроника",
+        title="Видеокарта Gigabyte GV-N5070EAGLE OC 12ГБ, RET",
+        price=75_000.0,
+        currency="RUB",
+        url="https://www.positronica.ru/product/videokarta-gigabyte-gv-n5070eagle/",
+        condition="new",
+        seller="Позитроника",
+        availability="in_stock",
+        checked_at=now,
+        confidence=0.9,
+        raw_text="Видеокарта Gigabyte GV-N5070EAGLE OC 12ГБ, RET",
+    )
+    filtered = filter_offers([offer])
+    assert len(filtered) == 0
